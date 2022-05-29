@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en" >
+<head>
+<meta charset="UTF-8">
+<title>Technical  Acronyms (CompSci + IT)</title>
+
+<link rel="stylesheet" href="css/style.css">
+
+</head>
+<body>
+
+<template id="table-reset">
+	<tr>
+		<th>标题</th>
+		<th>描述</th>
+	</tr>
+</template>
+<template id="table-row-template">
+	<tr>
+		<td class="name"><abbr class="abbr" title=""></abbr></td>
+		<td class="desc"></td>
+	</tr>
+</template>
+<div class="util">
+	<input id="myfiles" type="file" accept="application/json" class="left">
+	<input id="myInput" type="search" onKeyUp="search()" placeholder="搜索首字母">
+</div>
+<main class="main">
+	<table id="table" data-toggle>
+		<tr>
+			<th>标题</th>
+			<th>描述</th>
+		</tr>
+	</table>
+</main>
+
+<script src="js/script.js"></script>
+
+</body>
+</html>

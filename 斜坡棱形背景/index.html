@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en" >
+
+<head>
+<meta charset="UTF-8">
+<title>Gradient Playground</title>
+
+<!--框架样式库-->
+<link rel='stylesheet' href='css/bootstrap.min.css'>
+
+<!--剪切板样式-->
+<link rel='stylesheet' href='css/toastr.css'>
+
+<!--主要样式-->
+<link rel="stylesheet" href="css/style.css">
+
+  
+</head>
+
+<body>
+
+<div class="container" id="app">
+  <div class="row">
+    <div class="col-sm text-center mt-4">
+      <h2>斜坡菱形背景</h2>
+      <h5 class="font-weight-light">通过CSS变量的自定义CSS渐变效果。</h5>
+    </div>
+  </div>
+  <div class="row mt-4">
+    <div class="col-sm text-center">
+      <div class="gradient-box rounded angle-bg"></div>
+    </div>
+  </div>
+  
+  <div class="row mt-4">
+    <div class="col-6">
+      <h6 class="mb-3">全部旋转</h6>
+      <input type="range" class="form-control-range" min="0" max="360" v-model="angleAdjust" >
+    </div>
+    <div class="col-6">
+      <h6 class="mb-3">色调</h6>
+      <input type="range" class="form-control-range mb-3" min="0" max="360" v-model="hueAdjust" > 
+    </div>
+  </div>
+  
+  <div class="row mt-4">
+    <div class="col text-center">
+      <button class="btn btn-outline-primary mr-1" @click="spin()">随机旋转</button>
+      <button class="btn btn-primary mr-1" @click="randomize()">随机角度</button>
+      <button class="btn btn-primary border-0 mr-1 angle-bg" @click="copyCSS()">复制样式</button>
+    </div>
+  </div>
+
+  <div id="copyBox"></div>
+  
+</div>
+
+<script src='js/vue.min.js'></script>
+<script src='js/jquery.min.js'></script>
+<script src='js/toastr.min.js'></script>
+<script src="js/script.js"></script>
+
+</body>
+</html>

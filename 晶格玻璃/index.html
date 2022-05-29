@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en" >
+
+<head>
+<meta charset="UTF-8">
+<title>CodePen Challenge - Polygon Surface</title>
+
+
+
+<link rel="stylesheet" href="css/style.css">
+
+
+</head>
+
+<body>
+
+<canvas id="webgl" width="500" height="1758"></canvas>
+
+<script id="vertexShader" type="x-shader/x-vertex">
+  attribute vec4 a_position;
+  
+  uniform mat4 u_modelViewMatrix;
+  uniform mat4 u_projectionMatrix;
+  
+  void main() {
+    gl_Position = a_position;
+  }
+</script>
+<script id="fragmentShader" type="x-shader/x-fragment">
+  precision highp float;
+  
+  uniform vec2 u_resolution;
+  uniform vec2 u_mouse;
+  uniform float u_time;
+  uniform sampler2D u_noise;
+  uniform sampler2D u_environment;
+  
+  vec2 movement;
+  float scale = 5.;
+  
+  vec2 mouse;
+
+  vec2 hash2(vec2 p)
+  {
+    vec2 o = texture2D( u_noise, (p+0.5)/256.0, -100.0 ).xy;
+    return o;
+  }
+  vec3 tex3D( sampler2D tex, in vec3 p, in vec3 n ){
+   
+    n = abs(n);
+    
+    p = (texture2D(tex, p.yz)*n.x + texture2D(tex, p.zx)*n.y + texture2D(tex, p.xy)*n.z).xyz;
+
+    return p;
+  }
+  
+  float voronoi(vec2 uv) {
+    // , inout vec2 n_point, inout vec2 s_n_point, inout float s_dist
+    float dist = 4.;
+    float s_dist = 4.;
+    float s_result = 0.;
+    
+    vec2 grid_id = floor(uv);
+    vec2 grid_uv = fract(uv);
+    
+    float exponent = 20.;
+    float result = 0.;
+    
+    for(float j = -1.; j < 2.; j++) {
+      for(float i = -1.; i < 2.; i++) {
+        vec2 offset = vec2(i, j);
+        vec2 grid_test_id = grid_id + offset;
+        vec2 rand = hash2(grid_test_id);
+        vec2 point_pos = offset + rand - grid_uv;
+
+        // The following adds some random animation to the particles
+        rand = hash2(grid_test_id + 1000.);
+        rand = 0.5 + 0.4*sin((u_time) + 6.2831*rand);
+        point_pos = offset + rand - grid_uv;
+        
+        // float len = length(point_pos); // the length gives us a more euclidian (conic) length
+        float len = dot(point_pos, point_pos); // The float gives us a more rounded distance
+        // float len = abs(point_pos.x)+abs(point_pos.y); // manhatten distance
+        result += exp( -exponent*len ); // To soften the effect, use this. You'll also need to return the log result, commented out below
+        
+        if(len < dist) {
+          s_dist = dist;
+          s_result += exp( -exponent*dist );
+          dist = len;
+        } else if (len < s_dist) {
+          s_dist = len;
+          s_result += exp( -exponent*len );
+        }
+      }
+    }
+    
+    // return 1.-(1.0/exponent)*log( s_result );
+    
+    return s_dist+.2;
+  }
+
+  
+  float bumpMap(vec2 uv, inout vec2 q, inout vec2 r, inout float s_dist) {
+    float vor = voronoi(uv);
+    return vor;
+  }
+  float bumpMap(vec2 p){
+    float c = voronoi(p.xy);
+    return c;
+  }
+  float m(vec3 p){
+    float h = bumpMap(p.xy);
+    return 1. - p.z - h;
+  }
+  
+  vec3 nr(vec3 p) { 
+
+    vec2 e = vec2(.02, 0);
+
+    float d1 = m(p + e.xyy), d2 = m(p - e.xyy);
+    float d3 = m(p + e.yxy), d4 = m(p - e.yxy);
+    float d5 = m(p + e.yyx), d6 = m(p - e.yyx);
+
+    return normalize(vec3(d1 - d2, d3 - d4, d5 - d6));
+  }
+
+
+  vec4 renderPass(vec2 uv, vec2 uvoffset) {
+    vec3 surfacePos = vec3(uv, 0.0);
+    vec3 ray = normalize(vec3(uv - movement, 1.));
+    vec3 lightPos = vec3(0., 0., -2.) + vec3(mouse, 0.);
+    vec3 normal = vec3(0., 0., -1);
+
+    vec2 sampleDistance = vec2(1. / u_resolution.x, 0.);
+
+    normal = nr( surfacePos );           
+    
+    vec3 textureBump = (texture2D(u_noise, surfacePos.xy * vec2(.001, 1.) * .5).rgb + texture2D(u_noise, surfacePos.xy).rgb * .5) * .02;
+    
+    normal -= textureBump;
+    normal = normalize(normal);
+
+    vec3 lightV = lightPos - surfacePos;
+    float lightDist = max(length(lightV), 0.001);
+    lightV /= lightDist;
+
+    vec3 lightColour = vec3(.8, .8, 1.);
+    vec3 surfaceColour = vec3(0., .5, 1.);
+
+    float shininess = 10.;
+    float brightness = 15.;
+    float metalness = .5;
+    float ambient = .3;
+
+    float falloff = 1.;
+    float attenuation = 1./(1.0 + lightDist*lightDist*falloff);
+
+    float diffuse = smoothstep(metalness, 1., max(dot(normal, lightV), 0.)) + ambient;
+    float specular = pow(max(dot( reflect(-lightV, normal), -ray), 0.), 10.) * shininess;
+    
+    vec3 tex = tex3D(u_environment, (ray + normal*.2 + textureBump), normal); // Fake environment mapping.
+
+    vec3 texCol = surfaceColour + tex * .2 * (brightness);
+
+    vec3 colour = (texCol * diffuse + lightColour*specular * (1.+normal) * 2.)*attenuation*1.5;
+
+    return vec4(colour, 1.);
+  }
+
+  void main() {
+    vec2 uv = (gl_FragCoord.xy - 0.5 * u_resolution.xy) / min(u_resolution.y, u_resolution.x);
+    
+    float l = smoothstep(.1, .0, length(uv-u_mouse))*.5;
+    
+    float t = u_time*.5;
+    float s = sin(t);
+    float c = cos(t);
+    mat2 rot = mat2(c, -s, s, c);
+    
+    movement = vec2(u_time*2.);
+    
+    uv *= scale;
+    uv *= rot;
+    uv += movement;
+    
+    mouse = u_mouse;
+    mouse *= scale;
+    mouse *= rot;
+    mouse += movement;
+    
+    vec4 render = renderPass(uv, vec2(0.));
+    
+    // grid(uv, colour, vec3(1.), vec2(1.), .005);
+    
+    render = mix(render * (1. + l * 5.), vec4(1.), l*.1);
+
+    gl_FragColor = render;
+  }
+  
+</script>
+
+<script src='js/apxlmx.js'></script>
+<script src="js/index.js"></script>
+
+
+
+
+</body>
+
+</html>
